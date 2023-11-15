@@ -36,16 +36,20 @@ export const delete_Users = async () => {
         const sevenDaysAgo = new Date();
         sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
+        const deletedUsers = await userModel.find({
+            fecha_ultima_conexion: { $lt: sevenDaysAgo }
+        });
+
         const result = await userModel.deleteMany({
             fecha_ultima_conexion: { $lt: sevenDaysAgo }
         });
 
-        return result.deletedCount; // Devuelve la cantidad de documentos eliminados
+        return { deletedCount: result.deletedCount, deletedUsers };
     } catch (error) {
-        console.error("Error al eliminar usuarios:", error);
-        return 0;
+        return { deletedCount: 0, deletedUsers: [] };
     }
 };
+
 
 export const update_User = async (user) => {
     try {
@@ -78,7 +82,9 @@ export const get_User_By_Id = async (_id) => {
 };
 
 export const reset_Pass = async (email, password) => {
+    //console.log(email);
     const user = await userModel.findOne({ email });
+    //console.log(user);
     if (!user) {
         return res.status(404).send({
             status: "error",
@@ -86,6 +92,14 @@ export const reset_Pass = async (email, password) => {
         });
     }
     const passwordHash = createHash(password);
+
+    if (passwordHash === user.password) {
+        return {
+            status: "error",
+            error: "La nueva contraseña debe ser diferente a la actual"
+        };
+    }
+
     await userModel.updateOne({
         email
     }, {
